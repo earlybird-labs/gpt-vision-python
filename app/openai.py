@@ -135,6 +135,39 @@ class OpenAIService:
                 else:
                     raise
         return message
+    
+    def vision_completion(self, url, instructions, model="gpt-4-vision-preview", max_tokens=300):
+        """
+        Call the OpenAI Vision API with the provided URL and instructions and return the response.
+        """
+        try:
+            # Prepare the messages for the API call
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": instructions},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": url,
+                            },
+                        },
+                    ],
+                }
+            ]
+
+            # Call the ChatCompletion.create method with the model, messages, and max_tokens
+            completion = self.client.chat.completions.create(model=model, messages=messages, max_tokens=max_tokens)
+            
+            # Extract the result from the response
+            result = completion.choices[0]
+
+            return result
+        except Exception as e:
+            # Log an error if the API call failed
+            logging.error(f"Failed to call OpenAI Vision API. Error: {e}")
+            return None
 
     def text_completion(self, message):
         """
@@ -153,12 +186,22 @@ if __name__ == "__main__":
     # Instantiate the OpenAIService
     openai_service = OpenAIService(mode="fast")
     # Define a conversation for testing
-    conversation = [
-        {"role": "system", "content": "You are a helpful assistant who only outputs JSON loadable text."},
-        {"role": "user", "content": "Who won the world series in 2020?"},
-    ]
-    # Set the parameters for the API call
-    params = openai_service.set_params(conversation, json_output=True)
-    # Call the API and print the response
-    response = openai_service.chat_completion(params)
-    print(response)
+
+    # test vision completion
+    url = "https://i.natgeofe.com/n/5de6e34a-d550-4358-b7ef-4d79a09c680e/aerial-beach-miami-florida_16x9.jpg"
+    instructions = "What's the image about?"
+
+    result = openai_service.vision_completion(url, instructions)
+
+    print(result)
+
+
+    # conversation = [
+    #     {"role": "system", "content": "You are a helpful assistant who only outputs JSON loadable text."},
+    #     {"role": "user", "content": "Who won the world series in 2020?"},
+    # ]
+    # # Set the parameters for the API call
+    # params = openai_service.set_params(conversation, json_output=True)
+    # # Call the API and print the response
+    # response = openai_service.chat_completion(params)
+    # print(response)
