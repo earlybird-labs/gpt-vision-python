@@ -1,10 +1,17 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import os
+
 import json
 import base64
 import logging
 import requests
 
+api_key: str = os.getenv("OPENAI_KEY")
+
 class Vision:
-    api_key = "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"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
