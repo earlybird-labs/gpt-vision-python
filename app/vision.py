@@ -1,15 +1,15 @@
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import os
 
 import json
 import base64
 import logging
 import requests
+from dotenv import load_dotenv
+from PIL import Image
 
-api_key: str = os.getenv("OPENAI_KEY")
+load_dotenv()
+
+api_key = os.getenv("OPENAI_KEY")
 
 class Vision:
     headers = {
@@ -30,6 +30,12 @@ class Vision:
         return base64.b64encode(response.content).decode('utf-8')
 
     @staticmethod
+    def resize_image(image_path, size):
+        original_image = Image.open(image_path)
+        resized_image = original_image.resize(size)
+        resized_image.save(image_path)
+
+    @staticmethod
     def annotate_images(image_paths_or_urls):
         annotated_images = []
         for image_path_or_url in image_paths_or_urls:
@@ -37,6 +43,7 @@ class Vision:
                 if image_path_or_url.startswith("http"):
                     base64_image = Vision.encode_image_from_url(image_path_or_url)
                 else:
+                    Vision.resize_image(image_path_or_url, (1920, 1080))  # Resize the image before encoding it
                     base64_image = Vision.encode_image(image_path_or_url)
                 
                 payload = {
@@ -60,36 +67,32 @@ class Vision:
                     ],
                     "max_tokens": Vision.max_tokens
                 }
-                response = requests.post(
-                    "https://api.openai.com/v1/engines/davinci-codex/completions",
-                    headers=Vision.headers,
-                    data=json.dumps(payload)
-                )
+                response = requests.post("https://api.openai.com/v1/chat/completions", headers=Vision.headers, json=payload)
                 if response.status_code == 200:
                     result = json.loads(response.content)
                     # Process the result as needed
                     description = result["choices"][0]["message"]["content"].strip()
-                    keywords = result["choices"][0]["message"]["keywords"]
                     annotated_image = {
                         "image_path_or_url": image_path_or_url,
                         "description": description,
-                        "keywords": keywords
                     }
                     annotated_images.append(annotated_image)
                 else:
-                    logging.error(f"Request failed with status code {response.status_code}")
+                    logging.error(f"Request failed with status code {response.status_code}, response: {response.content}")
             except Exception as e:
                 # Log the error and continue to the next image
                 logging.error(f"Failed to annotate image {image_path_or_url}. Error: {e}")
 
         return annotated_images
 
+
+
 if __name__ == "__main__":
     image_paths_or_urls = [
-        "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.nature.com%2Farticles%2F528452a&psig=AOvVaw0RTB0Ql1AXbFOymp6f_D4g&ust=1699988340683000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCKiumZvUwYIDFQAAAAAdAAAAABAE",
-        "https://www.google.com/imgres?imgurl=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F9%2F9a%2FGull_portrait_ca_usa.jpg&tbnid=0DzWhtJoQ1KWgM&vet=12ahUKEwiHpM-a1MGCAxV5TTABHSY8A6oQMyhcegUIARDLAg..i&imgrefurl=https%3A%2F%2Fcommons.wikimedia.org%2Fwiki%2FCommons%3AQuality_images&docid=cIQ7wXCEtJiOWM&w=2272&h=1704&q=images&ved=2ahUKEwiHpM-a1MGCAxV5TTABHSY8A6oQMyhcegUIARDLAg",
-        "https://www.google.com/imgres?imgurl=https%3A%2F%2Fcdn.pixabay.com%2Fphoto%2F2013%2F07%2F21%2F13%2F00%2Frose-165819_640.jpg&tbnid=t1X5lcWFswI5RM&vet=10CCIQMyh3ahcKEwiorpmb1MGCAxUAAAAAHQAAAAAQCA..i&imgrefurl=https%3A%2F%2Fpixabay.com%2Fimages%2Fsearch%2Fflowers%2F&docid=6QnaOLvEQovLfM&w=640&h=424&itg=1&q=images&ved=0CCIQMyh3ahcKEwiorpmb1MGCAxUAAAAAHQAAAAAQCA"
+        "/Users/BilalRaza/Downloads/imageforAI1.jpeg",
+        "/Users/BilalRaza/Downloads/imageforAI2.jpeg"
         ]
     annotated_images = Vision.annotate_images(image_paths_or_urls)
+    print(annotated_images)
     with open("annotated_images.json", "w") as f:
         json.dump(annotated_images, f)
